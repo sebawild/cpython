@@ -1,3 +1,7 @@
+This is our local copy of CPython to play with.
+
+
+
 This is Python version 3.11.0 alpha 4
 =====================================
 
