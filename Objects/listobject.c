@@ -8,12 +8,38 @@
 #include "pycore_tuple.h"         // _PyTuple_FromArray()
 #include <stddef.h>
 
+#include <stdio.h> // for debug
+
 /*[clinic input]
 class list "PyListObject *" "&PyList_Type"
 [clinic start generated code]*/
 /*[clinic end generated code: output=da39a3ee5e6b4b0d input=f9b222678f9f71e0]*/
 
 #include "clinic/listobject.c.h"
+
+
+
+
+static void debug_print_pyobject(PyObject *obj) {
+    PyObject* repr = PyObject_Repr(obj);
+    PyObject* str = PyUnicode_AsEncodedString(repr, "utf-8", "~E~");
+    const char *bytes = PyBytes_AS_STRING(str);
+
+    printf("REPR: %s\n", bytes);
+
+    Py_XDECREF(repr);
+    Py_XDECREF(str);
+}
+
+
+
+
+
+
+
+
+
+
 
 #if PyList_MAXFREELIST > 0
 static struct _Py_list_state *
@@ -2305,6 +2331,12 @@ static PyObject *
 list_sort_impl(PyListObject *self, PyObject *keyfunc, int reverse)
 /*[clinic end generated code: output=57b9f9c5e23fbe42 input=cb56cd179a713060]*/
 {
+    // SW: Add output to check when we are sorting
+    printf("SORTING!! list of length %ld, reverse=%d\n", list_length(self), reverse);
+    //debug_print_pyobject((PyObject *) self);
+    // the printing causes a segfault; something not kosher here.
+    // It is NOT the cast to PyObject
+ 
     MergeState ms;
     Py_ssize_t nremaining;
     Py_ssize_t minrun;
@@ -2570,7 +2602,7 @@ keyfunc_fail:
 int
 PyList_Sort(PyObject *v)
 {
-    if (v == NULL || !PyList_Check(v)) {
+   if (v == NULL || !PyList_Check(v)) {
         PyErr_BadInternalCall();
         return -1;
     }
