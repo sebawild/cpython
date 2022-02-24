@@ -1,8 +1,14 @@
-/* List object implementation */
+/* List object implemen1tation */
 
-#define USE_TIMSORT
-//#define USE_POWERSORT
+//#define USE_TIMSORT //uses the timsort method for sorting 
+#define USE_POWERSORT //uses the powersort method for sorting 
+//the following flags are only to be used on powersort sorting method 
 //#define PRINTING
+//#define USE_DRAG
+//#define FPRINT
+//#define MERGECOST
+//#define PRINT_LIST
+
 
 
 #include "Python.h"
@@ -12,8 +18,10 @@
 #include "pycore_object.h"        // _PyObject_GC_TRACK()
 #include "pycore_tuple.h"         // _PyTuple_FromArray()
 #include <stddef.h>
-
+#include <time.h>                 // For used of sleep in drag 
 #include <stdio.h> // for debug
+#include <stdlib.h> 
+#include <unistd.h>
 
 /*[clinic input]
 class list "PyListObject *" "&PyList_Type"
@@ -21,6 +29,14 @@ class list "PyListObject *" "&PyList_Type"
 /*[clinic end generated code: output=da39a3ee5e6b4b0d input=f9b222678f9f71e0]*/
 
 #include "clinic/listobject.c.h"
+
+//for
+int print_list_size_threshold = 0;
+
+#ifdef MERGECOST
+long int mergecost = 0;
+
+#endif
 
 #ifdef USE_TIMSORT 
 
@@ -45,6 +61,7 @@ get_list_state(void)
     PyInterpreterState *interp = _PyInterpreterState_GET();
     return &interp->list;
 }
+
 #endif
 
 
@@ -1943,6 +1960,12 @@ merge_at(MergeState *ms, Py_ssize_t i)
     assert(na > 0 && nb > 0);
     assert(ssa.keys + na == ssb.keys);
 
+    //mergecost
+    #ifdef MERGECOST
+    mergecost = mergecost + na + nb;
+
+    #endif
+
     /* Record the length of the combined runs; if i is the 3rd-last
      * run now, also slide over the last run (which isn't involved
      * in this merge).  The current run i+1 goes away in any case.
@@ -2503,6 +2526,7 @@ list_sort_impl(PyListObject *self, PyObject *keyfunc, int reverse)
         if (n < minrun) {
             const Py_ssize_t force = nremaining <= minrun ?
                               nremaining : minrun;
+            //we dont count merge cost for the insertion sort
             if (binarysort(&ms, lo, lo.keys + force, lo.keys + n) < 0)
                 goto fail;
             n = force;
@@ -2567,6 +2591,26 @@ keyfunc_fail:
         PyMem_Free(final_ob_item);
     }
     Py_XINCREF(result);
+
+    #ifdef MERGECOST
+    int x = list_length(self);
+    if (x >= print_list_size_threshold && mergecost > 0){
+
+        FILE * fp;
+
+       //time_t ltime; /* calendar time */
+       //ltime=time(NULL); /* get current cal time */
+
+        fp = fopen ("output.txt", "a");
+        //fprintf(fp, "\n%s %s %d",asctime( localtime(&ltime) ), "The length of the list is = ", x);
+	    fprintf(fp,"%s %ld %s %d\n", "The merge cost is = ", mergecost, ", The list length is = ", x);
+        fclose(fp);
+    }
+
+    mergecost = 0;
+
+    #endif
+
     return result;
 }
 #undef IFLT
@@ -5457,6 +5501,11 @@ merge_at(MergeState *ms, Py_ssize_t i)
      * run now, also slide over the last run (which isn't involved
      * in this merge).  The current run i+1 goes away in any case.
      */
+
+    #ifdef MERGECOST
+    mergecost += na + nb;
+    #endif
+
     ms->pending[i].len = na + nb;
     if (i == ms->n - 3)
         ms->pending[i+1] = ms->pending[i+2];
@@ -5856,6 +5905,43 @@ list_sort_impl(PyListObject *self, PyObject *keyfunc, int reverse)
     // It is NOT the cast to PyObject
     #endif
 
+    #ifdef FPRINT
+
+    
+    int x = list_length(self);
+    if (x >= print_list_size_threshold){
+        
+        FILE * fp;
+	
+       //time_t ltime; /* calendar time */
+       //ltime=time(NULL); /* get current cal time */
+
+        fp = fopen ("output.txt", "a");
+        //fprintf(fp, "\n%s %s %d",asctime( localtime(&ltime) ), "The length of the list is = ", x);
+	fprintf(fp,"%d\n", x);
+
+        fclose(fp);
+    }
+    
+    #endif
+
+
+    #ifdef USE_DRAG
+    //using a drag feature that will for now print to screen 
+    //if(list_length(self) > 100){ 
+    //	 printf("DRAG POWERSORT!! list of length %ld\n", list_length(self));
+    //
+    int n = list_length(self);
+    //struct timespec remaining, request = {0,n*n*n};
+    // if(nanosleep(&request, &remaining)==0){
+    //	printf("it slept\n");
+    // }
+    //nanosleep(&request, &remaining);
+
+    sleep(n/100000);
+
+    #endif
+
     MergeState ms;
     Py_ssize_t nremaining;
     Py_ssize_t minrun;
@@ -6047,6 +6133,7 @@ list_sort_impl(PyListObject *self, PyObject *keyfunc, int reverse)
         if (n < minrun) {
             const Py_ssize_t force = nremaining <= minrun ?
                                      nremaining : minrun;
+            //binary sort being counted as 0 merge cost
             if (binarysort(&ms, lo, lo.keys + force, lo.keys + n) < 0)
                 goto fail;
             n = force;
@@ -6113,6 +6200,25 @@ list_sort_impl(PyListObject *self, PyObject *keyfunc, int reverse)
         PyMem_Free(final_ob_item);
     }
     Py_XINCREF(result);
+#ifdef MERGECOST
+    int x = list_length(self);
+    if (x >= print_list_size_threshold && mergecost > 0){
+
+        FILE * fp;
+
+        //time_t ltime; /* calendar time */
+        //ltime=time(NULL); /* get current cal time */
+
+        fp = fopen ("output.txt", "a");
+        //fprintf(fp, "\n%s %s %d",asctime( localtime(&ltime) ), "The length of the list is = ", x);
+        fprintf(fp,"%s %ld %s %d\n", "The merge cost is = ", mergecost, ", The list length is = ", x);
+        fclose(fp);
+    }
+
+    mergecost = 0;
+
+#endif
+
     return result;
 }
 #undef IFLT
@@ -7077,3 +7183,5 @@ listiter_reduce_general(void *_it, int forward)
 }
 
 #endif
+
+
