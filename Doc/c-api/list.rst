@@ -61,7 +61,7 @@ List Objects
    Return the object at position *index* in the list pointed to by *list*.  The
    position must be non-negative; indexing from the end of the list is not
    supported.  If *index* is out of bounds (<0 or >=len(list)),
-   return ``NULL`` and set an :exc:`IndexError` exception.
+   return ``NULL`` and set an :exc:`IndexError` exception.\
 
 
 .. c:function:: PyObject* PyList_GET_ITEM(PyObject *list, Py_ssize_t i)

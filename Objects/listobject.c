@@ -7,7 +7,7 @@
 //#define USE_DRAG
 //#define FPRINT
 //#define MERGECOST
-//#define PRINT_LIST
+#define PRINT_LIST
 
 
 
@@ -5851,7 +5851,7 @@ unsafe_tuple_compare(PyObject *v, PyObject *w, MergeState *ms)
     wlen = Py_SIZE(wt);
     for (; i < vlen && i < wlen; i++) {
         k = PyObject_RichCompareBool(vt->ob_item[i], wt->ob_item[i], Py_EQ);
-        if (!k) { /* not equal */
+        if (!k) { /* not eqPyObject_RichCompareBool(v, w, Py_LT)ual */
             if (i) {
                 return PyObject_RichCompareBool(vt->ob_item[i], wt->ob_item[i],
                                                 Py_LT);
@@ -5869,6 +5869,39 @@ unsafe_tuple_compare(PyObject *v, PyObject *w, MergeState *ms)
     return vlen < wlen;
 
 }
+#ifdef PRINT_LIST
+
+/* End of pre-sort check: ms is now set properly! */
+struct Py_sort_obj {
+    PyObject *list_obj;
+    int ref;
+//    MergeState * ms;
+
+};
+//it ia calling the ket compare function which could be one of the merge state options
+int compareMyType (const void * va, const void *vb)
+{
+    const struct Py_sort_obj * a = va;
+    const struct Py_sort_obj * b = vb;
+    if (PyObject_RichCompareBool(a->list_obj,b->list_obj,Py_LT) == 1) return -1;
+    if (PyObject_RichCompareBool(a->list_obj,b->list_obj,Py_GT) == 1) return +1;
+    return a->ref - b->ref;
+}
+//the above doesnt work due to it not being of the form aka ‘int (*)(const void *, const void *)'
+//so i need to make it of this type
+
+//PyObject_RichCompareBool could possibly use this as the comapre function as it returns, 0 , 1 or -1
+/*
+int compareMyType2 (const void * a, const void * b)
+{
+    if (*(struct Py_sort_obj*)a->ms->key_compare(*(struct Py_sort_obj*)a->list_obj,*(struct Py_sort_obj*)b->list_obj,*(struct Py_sort_obj*)a->ms) == 1) return true;
+    if (*(struct Py_sort_obj*)a->ms->key_compare(*(struct Py_sort_obj*)b->list_obj,*(struct Py_sort_obj*)a->list_obj,*(struct Py_sort_obj*)a->ms) == 1) return false;
+    return -1;
+}
+ */
+//neither of these work, what if i design own sorting algorithm that uses the build in comparison
+
+#endif
 
 /* An adaptive, stable, natural mergesort.  See listsort.txt.
  * Returns Py_None on success, NULL on error.  Even in case of error, the
@@ -5877,7 +5910,7 @@ unsafe_tuple_compare(PyObject *v, PyObject *w, MergeState *ms)
  */
 /*[clinic input]
 list.sort
-
+how to renormailze screen size on ubuntu terminal
     *
     key as keyfunc: object = None
     reverse: bool(accept={int}) = False
@@ -5927,6 +5960,7 @@ list_sort_impl(PyListObject *self, PyObject *keyfunc, int reverse)
 
 
     #ifdef USE_DRAG
+    {
     //using a drag feature that will for now print to screen 
     //if(list_length(self) > 100){ 
     //	 printf("DRAG POWERSORT!! list of length %ld\n", list_length(self));
@@ -5939,8 +5973,15 @@ list_sort_impl(PyListObject *self, PyObject *keyfunc, int reverse)
     //nanosleep(&request, &remaining);
 
     sleep(n/100000);
+    };
+    #endif
+
+    #ifdef PRINT_LIST
+    // wb = willems Bullshit
+    int wb_list_size = list_length(self);
 
     #endif
+
 
     MergeState ms;
     Py_ssize_t nremaining;
@@ -6077,6 +6118,7 @@ list_sort_impl(PyListObject *self, PyObject *keyfunc, int reverse)
             else if ((ms.key_richcompare = key_type->tp_richcompare) != NULL) {
                 ms.key_compare = unsafe_object_compare;
             }
+
             else {
                 ms.key_compare = safe_object_compare;
             }
@@ -6099,7 +6141,53 @@ list_sort_impl(PyListObject *self, PyObject *keyfunc, int reverse)
             ms.first_tuple_items_resolved_it = 1; /* be optimistic */
         }
     }
-    /* End of pre-sort check: ms is now set properly! */
+
+
+#ifdef PRINT_LIST
+    {
+
+        //array of Py_sort_obj for storing in
+        struct Py_sort_obj * wb_rank_reduction_list = malloc(wb_list_size * sizeof (struct Py_sort_obj));
+        for (int i = 0; i < wb_list_size; i++) {
+            //wb_rank_reduction_list[i].list_obj = PyList_GetItem(*self, i);
+            //wb_rank_reduction_list[i].list_obj = self[i];
+            wb_rank_reduction_list[i].list_obj = saved_ob_item[i];
+            wb_rank_reduction_list[i].ref = i;
+//            wb_rank_reduction_list[i].ms = &ms;
+        }
+
+        qsort(wb_rank_reduction_list, wb_list_size, sizeof (struct Py_sort_obj), compareMyType);
+
+        int *wb_rank_reduced_list = malloc(wb_list_size * sizeof(int));
+        int rank = 0;
+        for (int i = 0; i < wb_list_size; i++) {
+            wb_rank_reduced_list[wb_rank_reduction_list[i].ref] = rank;
+            if (i < wb_list_size - 1 &&
+                !PyObject_RichCompareBool(wb_rank_reduction_list[i].list_obj,
+                                          wb_rank_reduction_list[i + 1].list_obj,
+                                          Py_EQ))
+                rank++;
+        }
+
+        //for printing the resulting list of objects to a file
+        FILE *fp;
+
+        //time_t ltime; /* calendar time */
+        //ltime=time(NULL); /* get current cal time */
+
+        fp = fopen("arrays.txt", "a");
+	    fprintf(fp, "%d", wb_list_size);
+        fprintf(fp, "%s", "(");
+        for (int i = 0; i < wb_list_size; i++) {
+            fprintf(fp, "%d%s", wb_rank_reduced_list[i], ",");
+        }
+        fprintf(fp, "%s\n", ")");
+
+        fclose(fp);
+        free(wb_rank_reduction_list);
+        free(wb_rank_reduced_list);
+    }
+#endif
 
     merge_init(&ms, saved_ob_size, keys != NULL, &lo);
 
