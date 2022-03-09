@@ -6,7 +6,7 @@
 //#define PRINTING
 //#define USE_DRAG
 //#define FPRINT
-//#define MERGECOST
+#define MERGECOST
 #define PRINT_LIST
 
 
@@ -2594,7 +2594,7 @@ keyfunc_fail:
 
     #ifdef MERGECOST
     int x = list_length(self);
-    if (x >= print_list_size_threshold && mergecost > 0){
+    if (x >= print_list_size_threshold && mergecost >=  0){
 
         FILE * fp;
 
@@ -5930,6 +5930,12 @@ static PyObject *
 list_sort_impl(PyListObject *self, PyObject *keyfunc, int reverse)
 /*[clinic end generated code: output=57b9f9c5e23fbe42 input=cb56cd179a713060]*/
 {
+    FILE *fp;
+    fp = fopen("arrays.txt", "a");
+    int wb_list_length = list_length(self);
+
+
+
     #ifdef PRINTING
     // SW: Add output to check when we are sorting
     printf("SORTING!! list of length %ld, reverse=%d\n", list_length(self), reverse);
@@ -6141,8 +6147,7 @@ list_sort_impl(PyListObject *self, PyObject *keyfunc, int reverse)
             ms.first_tuple_items_resolved_it = 1; /* be optimistic */
         }
     }
-
-
+    
 #ifdef PRINT_LIST
     {
 
@@ -6170,20 +6175,20 @@ list_sort_impl(PyListObject *self, PyObject *keyfunc, int reverse)
         }
 
         //for printing the resulting list of objects to a file
-        FILE *fp;
+        //FILE *fp;
 
         //time_t ltime; /* calendar time */
         //ltime=time(NULL); /* get current cal time */
 
-        fp = fopen("arrays.txt", "a");
-	    fprintf(fp, "%d", wb_list_size);
-        fprintf(fp, "%s", "(");
-        for (int i = 0; i < wb_list_size; i++) {
-            fprintf(fp, "%d%s", wb_rank_reduced_list[i], ",");
+        //fp = fopen("arrays.txt", "a");
+	if(wb_list_size > 0){
+	fprintf(fp, "%d%s%d", wb_list_size,"#",wb_rank_reduced_list[0]);
+        
+        for (int i = 1; i < wb_list_size; i++) {
+            fprintf(fp, "%s%d",",", wb_rank_reduced_list[i]);
         }
-        fprintf(fp, "%s\n", ")");
-
-        fclose(fp);
+        fprintf(fp, "%s", "#");
+	}
         free(wb_rank_reduction_list);
         free(wb_rank_reduced_list);
     }
@@ -6289,24 +6294,25 @@ list_sort_impl(PyListObject *self, PyObject *keyfunc, int reverse)
     }
     Py_XINCREF(result);
 #ifdef MERGECOST
-    int x = list_length(self);
-    if (x >= print_list_size_threshold && mergecost > 0){
+    
+    if (wb_list_length > print_list_size_threshold ){
 
-        FILE * fp;
+        //FILE * fp;
 
         //time_t ltime; /* calendar time */
         //ltime=time(NULL); /* get current cal time */
 
-        fp = fopen ("output.txt", "a");
+        //fp = fopen ("output.txt", "a");
         //fprintf(fp, "\n%s %s %d",asctime( localtime(&ltime) ), "The length of the list is = ", x);
-        fprintf(fp,"%s %ld %s %d\n", "The merge cost is = ", mergecost, ", The list length is = ", x);
-        fclose(fp);
+        //fprintf(fp,"%s %ld %s %d\n", "The merge cost is = ", mergecost, ", The list length is = ", x);
+	fprintf(fp, "%ld\n" , mergecost);
+        
     }
 
     mergecost = 0;
 
 #endif
-
+    fclose(fp);
     return result;
 }
 #undef IFLT
