@@ -5851,7 +5851,7 @@ unsafe_tuple_compare(PyObject *v, PyObject *w, MergeState *ms)
     wlen = Py_SIZE(wt);
     for (; i < vlen && i < wlen; i++) {
         k = PyObject_RichCompareBool(vt->ob_item[i], wt->ob_item[i], Py_EQ);
-        if (!k) { /* not eqPyObject_RichCompareBool(v, w, Py_LT)ual */
+        if (!k) { /* not equal */
             if (i) {
                 return PyObject_RichCompareBool(vt->ob_item[i], wt->ob_item[i],
                                                 Py_LT);
@@ -5910,7 +5910,6 @@ int compareMyType2 (const void * a, const void * b)
  */
 /*[clinic input]
 list.sort
-how to renormailze screen size on ubuntu terminal
     *
     key as keyfunc: object = None
     reverse: bool(accept={int}) = False
