@@ -1,6 +1,6 @@
-import math
-import random
-A = [random.randint(0,1000) for x in range(10)]
+#import math
+#import random
+#A = [random.randint(0,1000) for x in range(10)]
 COMPARISONS = 0
 class CmpCounter:
     def __init__(self, value):
@@ -24,11 +24,11 @@ class CmpCounter:
     def __str__(self):
         return self._value.__str__()
     
-def lgNFac(n):
-    s = 0
-    for i in range(2,n+1):
-        s += math.log2(i)
-    return s
+#def lgNFac(n):
+#    s = 0
+#    for i in range(2,n+1):
+#        s += math.log2(i)
+#    return s
 
 def my_key(x) :
     return CmpCounter(x)
@@ -73,7 +73,7 @@ def find_runs(array, increasing_only = True):
     return runs
             
 
-x = readFile("pyflate_runs_info.txt")
+x = readFile("pyflate_timsort_runs_info.txt")
 runs_list = []
 
 for i in range(0,(len(x))):
@@ -92,9 +92,9 @@ for i in range(0,(len(x))):
     compar = COMPARISONS
 
     
-    runs_list.append([int(a[0]),a[2],no_of_runs, no_of_runs2, max_len,max_len2, compar, b, runs, runs2])
+    runs_list.append([ int(a[0]),a[3],a[2],no_of_runs, no_of_runs2, max_len,max_len2, compar, b, runs, runs2])
     
 #now if we sort in terms of run length 
 runs_list.sort(reverse = True)
-print("the array prints them in the format: length, merge cost, no of runs (increasing only), no of runs (increasing and decreasing), max length (increasing only), max length (inc/dec), comaprisons, array, run_length array(inc), run len array (inc/dec) ")
-print(runs_list[0][:7])
+print("the array prints them in the format: length,sort_type,  merge cost, no of runs (increasing only), no of runs (increasing and decreasing), max length (increasing only), max length (inc/dec), comaprisons, array, run_length array(inc), run len array (inc/dec) ")
+print(runs_list[0][:8])
