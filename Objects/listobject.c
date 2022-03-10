@@ -5884,8 +5884,9 @@ int compareMyType (const void * va, const void *vb)
     const struct Py_sort_obj * a = va;
     const struct Py_sort_obj * b = vb;
     if (PyObject_RichCompareBool(a->list_obj,b->list_obj,Py_LT) == 1) return -1;
-    if (PyObject_RichCompareBool(a->list_obj,b->list_obj,Py_GT) == 1) return +1;
-    return a->ref - b->ref;
+    //if (PyObject_RichCompareBool(a->list_obj,b->list_obj,Py_GT) == 1) return +1;
+    if (PyObject_RichCompareBool(a->list_obj,b->list_obj,Py_EQ) == 1) return a->ref -b->ref ;
+    return +1;
 }
 //the above doesnt work due to it not being of the form aka ‘int (*)(const void *, const void *)'
 //so i need to make it of this type
@@ -6152,12 +6153,23 @@ list_sort_impl(PyListObject *self, PyObject *keyfunc, int reverse)
 
         //array of Py_sort_obj for storing in
         struct Py_sort_obj * wb_rank_reduction_list = malloc(wb_list_size * sizeof (struct Py_sort_obj));
-        for (int i = 0; i < wb_list_size; i++) {
-            //wb_rank_reduction_list[i].list_obj = PyList_GetItem(*self, i);
-            //wb_rank_reduction_list[i].list_obj = self[i];
-            wb_rank_reduction_list[i].list_obj = saved_ob_item[i];
-            wb_rank_reduction_list[i].ref = i;
-//            wb_rank_reduction_list[i].ms = &ms;
+	
+	 if (keyfunc == NULL){
+            for (int i = 0; i < wb_list_size; i++) {
+                //wb_rank_reduction_list[i].list_obj = PyList_GetItem(*self, i);
+                //wb_rank_reduction_list[i].list_obj = self[i];
+                wb_rank_reduction_list[i].list_obj = saved_ob_item[i];
+                wb_rank_reduction_list[i].ref = i;
+//              wb_rank_reduction_list[i].ms = &ms;
+            }
+        } else {
+            for (int i = 0; i < wb_list_size; i++) {
+                //wb_rank_reduction_list[i].list_obj = PyList_GetItem(*self, i);
+                //wb_rank_reduction_list[i].list_obj = self[i];
+                wb_rank_reduction_list[i].list_obj =keys[i];
+                wb_rank_reduction_list[i].ref = i;
+//              wb_rank_reduction_list[i].ms = &ms;
+            }
         }
 
         qsort(wb_rank_reduction_list, wb_list_size, sizeof (struct Py_sort_obj), compareMyType);
