@@ -1,0 +1,8 @@
+The merge cost is =  957 , The list length is =  319
+The merge cost is =  957 , The list length is =  319
+The merge cost is =  957 , The list length is =  319
+The merge cost is =  957 , The list length is =  319
+The merge cost is =  957 , The list length is =  319
+The merge cost is =  957 , The list length is =  319
+The merge cost is =  957 , The list length is =  319
+The merge cost is =  957 , The list length is =  319
