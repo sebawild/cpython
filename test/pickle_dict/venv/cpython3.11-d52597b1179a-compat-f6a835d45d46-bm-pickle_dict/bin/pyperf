@@ -1,0 +1,8 @@
+#!/LOCAL/sgwcawle/cpython-drag/test/pickle_dict/venv/cpython3.11-d52597b1179a-compat-f6a835d45d46-bm-pickle_dict/bin/python
+# -*- coding: utf-8 -*-
+import re
+import sys
+from pyperf.__main__ import main
+if __name__ == '__main__':
+    sys.argv[0] = re.sub(r'(-script\.pyw|\.exe)?$', '', sys.argv[0])
+    sys.exit(main())
