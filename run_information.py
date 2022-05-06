@@ -1,6 +1,17 @@
 #import math
-#import random
+#import random 
 #A = [random.randint(0,1000) for x in range(10)]
+"""
+has to be ran using python3
+if print to file true then prints if not then it doesn't   
+"""
+printToFile = False
+printArray = False 
+fileName = "arrays.txt"
+filePrintName ="pyflate_longest_array.txt"
+
+
+
 COMPARISONS = 0
 class CmpCounter:
     def __init__(self, value):
@@ -71,9 +82,8 @@ def find_runs(array, increasing_only = True):
                 
                 
     return runs
-            
-
-x = readFile("pyflate_timsort_runs_info.txt")
+ 
+x = readFile(fileName)
 runs_list = []
 
 for i in range(0,(len(x))):
@@ -96,5 +106,26 @@ for i in range(0,(len(x))):
     
 #now if we sort in terms of run length 
 runs_list.sort(reverse = True)
-print("the array prints them in the format: length,sort_type,  merge cost, no of runs (increasing only), no of runs (increasing and decreasing), max length (increasing only), max length (inc/dec), comaprisons, array, run_length array(inc), run len array (inc/dec) ")
-print(runs_list[0][:8])
+#print("the array prints them in the format: length,sort_type,  merge cost, no of runs (increasing only), no of runs (increasing and decreasing), max length (increasing only), max length (inc/dec), comaprisons, array, run_length array(inc), run len array (inc/dec) ")
+#print(runs_list[0][:8])
+#print(runs_list[0][0])
+print("The length of the array is", runs_list[0][0])
+print("The sort method used was:", runs_list[0][1])
+print("The mergecost is:", runs_list[0][2])
+print("The number of runs (increasing only) is:", runs_list[0][3])
+print("The number of runs (increasing and decreasing) is:", runs_list[0][4])
+print("The max length of a run (increasnig only) is:", runs_list[0][5])
+print("The max length of a run (increasing and decreasing) is:", runs_list[0][6]) 
+print("The number of comparisons when sorting is:", runs_list[0][7])
+if printArray == True: print("The Array is:", runs_list[0][8])
+
+if printToFile == True: 
+	print("File has with longest array printed to" , filePrintName)
+	f = open(filePrintName, 'w')
+	for i in runs_list[0][8]:
+		f.write(str(i))
+		f.write(",")
+
+	f.close()
+	print("The arrays has been printed to file:", filePrintName)
+

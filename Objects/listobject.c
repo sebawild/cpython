@@ -1,14 +1,10 @@
 /* List object implemen1tation */
 
-#define USE_TIMSORT //uses the timsort method for sorting 
-//#define USE_POWERSORT //uses the powersort method for sorting 
-//the following flags are only to be used on powersort sorting method
-//#define PRINT_INFO //this will be used to merge all info into a file that is printed out, this can be used with both timsort and powersort.
-//#define PRINTING
+//#define USE_TIMSORT //uses the timsort method for sorting 
+#define USE_POWERSORT //uses the powersort method for sorting
+#define PRINT_INFO //this will be used to merge all info into a file that is printed out, this can be used with both timsort and powersort.
 //#define USE_DRAG
-//#define FPRINT
-//#define MERGECOST
-//#define PRINT_LIST
+
 
 
 
@@ -31,13 +27,10 @@ class list "PyListObject *" "&PyList_Type"
 
 #include "clinic/listobject.c.h"
 
-//for
+
 #ifdef PRINT_INFO
 int print_list_size_threshold = 0;
-
-//#ifdef MERGECOST
 long int mergecost = 0;
-
 #endif
 
 #ifdef USE_TIMSORT 
@@ -1964,9 +1957,7 @@ merge_at(MergeState *ms, Py_ssize_t i)
 
     //mergecost
     #ifdef PRINT_INFO
-    //#ifdef MERGECOST
     mergecost = mergecost + na + nb;
-
     #endif
 
     /* Record the length of the combined runs; if i is the 3rd-last
@@ -2300,17 +2291,15 @@ unsafe_tuple_compare(PyObject *v, PyObject *w, MergeState *ms)
     return vlen < wlen;
 
  }
-
- //#ifdef PRINT_LIST
-#ifdef PRINT_INFO
 /* End of pre-sort check: ms is now set properly! */
+
+#ifdef PRINT_INFO
 struct Py_sort_obj {
     PyObject *list_obj;
     int ref;
-//    MergeState * ms;
 
 };
-//it ia calling the ket compare function which could be one of the merge state options
+
 int compareMyType (const void * va, const void *vb)
 {
     const struct Py_sort_obj * a = va;
@@ -2320,19 +2309,6 @@ int compareMyType (const void * va, const void *vb)
     if (PyObject_RichCompareBool(a->list_obj,b->list_obj,Py_EQ) == 1) return a->ref -b->ref ;
     return +1;
 }
-//the above doesnt work due to it not being of the form aka ‘int (*)(const void *, const void *)'
-//so i need to make it of this type
-
-//PyObject_RichCompareBool could possibly use this as the comapre function as it returns, 0 , 1 or -1
-/*
-int compareMyType2 (const void * a, const void * b)
-{
-    if (*(struct Py_sort_obj*)a->ms->key_compare(*(struct Py_sort_obj*)a->list_obj,*(struct Py_sort_obj*)b->list_obj,*(struct Py_sort_obj*)a->ms) == 1) return true;
-    if (*(struct Py_sort_obj*)a->ms->key_compare(*(struct Py_sort_obj*)b->list_obj,*(struct Py_sort_obj*)a->list_obj,*(struct Py_sort_obj*)a->ms) == 1) return false;
-    return -1;
-}
- */
-//neither of these work, what if i design own sorting algorithm that uses the build in comparison
 
 #endif
 
@@ -2370,34 +2346,6 @@ list_sort_impl(PyListObject *self, PyObject *keyfunc, int reverse)
     FILE *fp;
     fp = fopen("arrays.txt", "a");
     int wb_list_length = list_length(self);
-    #endif
-
-    #ifdef PRINTING
-    // SW: Add output to check when we are sorting
-    printf("SORTING timsort way!! list of length %ld, reverse=%d\n", list_length(self), reverse);
-    //debug_print_pyobject((PyObject *) self);
-    // the printing causes a segfault; something not kosher here.
-    // It is NOT the cast to PyObject
-    #endif
-
-    #ifdef FPRINT
-
-
-    int x = list_length(self);
-    if (x >= print_list_size_threshold){
-
-        FILE * fp;
-
-       //time_t ltime; /* calendar time */
-       //ltime=time(NULL); /* get current cal time */
-
-        fp = fopen ("output.txt", "a");
-        //fprintf(fp, "\n%s %s %d",asctime( localtime(&ltime) ), "The length of the list is = ", x);
-	fprintf(fp,"%d\n", x);
-
-        fclose(fp);
-    }
-
     #endif
 
     MergeState ms;
@@ -2567,19 +2515,13 @@ list_sort_impl(PyListObject *self, PyObject *keyfunc, int reverse)
 
         if (keyfunc == NULL){
             for (int i = 0; i < wb_list_length; i++) {
-                //wb_rank_reduction_list[i].list_obj = PyList_GetItem(*self, i);
-                //wb_rank_reduction_list[i].list_obj = self[i];
                 wb_rank_reduction_list[i].list_obj = saved_ob_item[i];
                 wb_rank_reduction_list[i].ref = i;
-//              wb_rank_reduction_list[i].ms = &ms;
             }
         } else {
             for (int i = 0; i < wb_list_length; i++) {
-                //wb_rank_reduction_list[i].list_obj = PyList_GetItem(*self, i);
-                //wb_rank_reduction_list[i].list_obj = self[i];
                 wb_rank_reduction_list[i].list_obj =keys[i];
                 wb_rank_reduction_list[i].ref = i;
-//              wb_rank_reduction_list[i].ms = &ms;
             }
         }
 
@@ -2597,13 +2539,6 @@ list_sort_impl(PyListObject *self, PyObject *keyfunc, int reverse)
                 rank++;
         }
 
-        //for printing the resulting list of objects to a file
-        //FILE *fp;
-
-        //time_t ltime; /* calendar time */
-        //ltime=time(NULL); /* get current cal time */
-
-        //fp = fopen("arrays.txt", "a");
 	if(wb_list_length > 0){
 	fprintf(fp, "%d%s%d", wb_list_length,"#",wb_rank_reduced_list[0]);
 
@@ -2716,36 +2651,12 @@ keyfunc_fail:
     }
     Py_XINCREF(result);
 
-    //#ifdef MERGECOST
-    //int x = list_length(self);
-    //if (x >= print_list_size_threshold && mergecost >=  0){
-
-        //FILE * fp;
-
-       //time_t ltime; /* calendar time */
-       //ltime=time(NULL); /* get current cal time */
-
-        //fp = fopen ("output.txt", "a");
-        //fprintf(fp, "\n%s %s %d",asctime( localtime(&ltime) ), "The length of the list is = ", x);
-	    //fprintf(fp,"%s %ld %s %d\n", "The merge cost is = ", mergecost, ", The list length is = ", x);
-        //fclose(fp);
-    //}
 #ifdef PRINT_INFO
 
-    if (wb_list_length > print_list_size_threshold ){
-
-        //FILE * fp;
-
-        //time_t ltime; /* calendar time */
-        //ltime=time(NULL); /* get current cal time */
-
-        //fp = fopen ("output.txt", "a");
-        //fprintf(fp, "\n%s %s %d",asctime( localtime(&ltime) ), "The length of the list is = ", x);
-        //fprintf(fp,"%s %ld %s %d\n", "The merge cost is = ", mergecost, ", The list length is = ", x);
+    if (wb_list_length > print_list_size_threshold )
+    {
 	fprintf(fp, "%ld%s\n" , mergecost, "#Timsort");
-
     }
-
     mergecost = 0;
     fclose(fp);
 
@@ -5642,7 +5553,6 @@ merge_at(MergeState *ms, Py_ssize_t i)
      * in this merge).  The current run i+1 goes away in any case.
      */
     #ifdef PRINT_INFO
-    //#ifdef MERGECOST
     mergecost += na + nb;
     #endif
 
@@ -6009,14 +5919,12 @@ unsafe_tuple_compare(PyObject *v, PyObject *w, MergeState *ms)
     return vlen < wlen;
 
 }
-//#ifdef PRINT_LIST
-#ifdef PRINT_INFO
 /* End of pre-sort check: ms is now set properly! */
+#ifdef PRINT_INFO
+
 struct Py_sort_obj {
     PyObject *list_obj;
     int ref;
-//    MergeState * ms;
-
 };
 //it ia calling the ket compare function which could be one of the merge state options
 int compareMyType (const void * va, const void *vb)
@@ -6028,19 +5936,6 @@ int compareMyType (const void * va, const void *vb)
     if (PyObject_RichCompareBool(a->list_obj,b->list_obj,Py_EQ) == 1) return a->ref -b->ref ;
     return +1;
 }
-//the above doesnt work due to it not being of the form aka ‘int (*)(const void *, const void *)'
-//so i need to make it of this type
-
-//PyObject_RichCompareBool could possibly use this as the comapre function as it returns, 0 , 1 or -1
-/*
-int compareMyType2 (const void * a, const void * b)
-{
-    if (*(struct Py_sort_obj*)a->ms->key_compare(*(struct Py_sort_obj*)a->list_obj,*(struct Py_sort_obj*)b->list_obj,*(struct Py_sort_obj*)a->ms) == 1) return true;
-    if (*(struct Py_sort_obj*)a->ms->key_compare(*(struct Py_sort_obj*)b->list_obj,*(struct Py_sort_obj*)a->list_obj,*(struct Py_sort_obj*)a->ms) == 1) return false;
-    return -1;
-}
- */
-//neither of these work, what if i design own sorting algorithm that uses the build in comparison
 
 #endif
 
@@ -6076,49 +5971,9 @@ list_sort_impl(PyListObject *self, PyObject *keyfunc, int reverse)
     int wb_list_length = list_length(self);
     #endif
 
-
-    #ifdef PRINTING
-    // SW: Add output to check when we are sorting
-    printf("SORTING!! list of length %ld, reverse=%d\n", list_length(self), reverse);
-    //debug_print_pyobject((PyObject *) self);
-    // the printing causes a segfault; something not kosher here.
-    // It is NOT the cast to PyObject
-    #endif
-
-    #ifdef FPRINT
-
-    
-    int x = list_length(self);
-    if (x >= print_list_size_threshold){
-        
-        FILE * fp;
-	
-       //time_t ltime; /* calendar time */
-       //ltime=time(NULL); /* get current cal time */
-
-        fp = fopen ("output.txt", "a");
-        //fprintf(fp, "\n%s %s %d",asctime( localtime(&ltime) ), "The length of the list is = ", x);
-	fprintf(fp,"%d\n", x);
-
-        fclose(fp);
-    }
-    
-    #endif
-
-
     #ifdef USE_DRAG
     {
-    //using a drag feature that will for now print to screen 
-    //if(list_length(self) > 100){ 
-    //	 printf("DRAG POWERSORT!! list of length %ld\n", list_length(self));
-    //
     int n = list_length(self);
-    //struct timespec remaining, request = {0,n*n*n};
-    // if(nanosleep(&request, &remaining)==0){
-    //	printf("it slept\n");
-    // }
-    //nanosleep(&request, &remaining);
-
     sleep(n/100000);
     };
     #endif
@@ -6290,19 +6145,13 @@ list_sort_impl(PyListObject *self, PyObject *keyfunc, int reverse)
 
         if (keyfunc == NULL){
             for (int i = 0; i < wb_list_length; i++) {
-                //wb_rank_reduction_list[i].list_obj = PyList_GetItem(*self, i);
-                //wb_rank_reduction_list[i].list_obj = self[i];
                 wb_rank_reduction_list[i].list_obj = saved_ob_item[i];
                 wb_rank_reduction_list[i].ref = i;
-//              wb_rank_reduction_list[i].ms = &ms;
             }
         } else {
             for (int i = 0; i < wb_list_length; i++) {
-                //wb_rank_reduction_list[i].list_obj = PyList_GetItem(*self, i);
-                //wb_rank_reduction_list[i].list_obj = self[i];
                 wb_rank_reduction_list[i].list_obj =keys[i];
                 wb_rank_reduction_list[i].ref = i;
-//              wb_rank_reduction_list[i].ms = &ms;
             }
         }
 
@@ -6320,13 +6169,6 @@ list_sort_impl(PyListObject *self, PyObject *keyfunc, int reverse)
                 rank++;
         }
 
-        //for printing the resulting list of objects to a file
-        //FILE *fp;
-
-        //time_t ltime; /* calendar time */
-        //ltime=time(NULL); /* get current cal time */
-
-        //fp = fopen("arrays.txt", "a");
 	if(wb_list_length > 0){
 	fprintf(fp, "%d%s%d", wb_list_length,"#",wb_rank_reduced_list[0]);
         
@@ -6439,23 +6281,12 @@ list_sort_impl(PyListObject *self, PyObject *keyfunc, int reverse)
         PyMem_Free(final_ob_item);
     }
     Py_XINCREF(result);
-//#ifdef MERGECOST
+
 #ifdef PRINT_INFO
     
     if (wb_list_length > print_list_size_threshold ){
-
-        //FILE * fp;
-
-        //time_t ltime; /* calendar time */
-        //ltime=time(NULL); /* get current cal time */
-
-        //fp = fopen ("output.txt", "a");
-        //fprintf(fp, "\n%s %s %d",asctime( localtime(&ltime) ), "The length of the list is = ", x);
-        //fprintf(fp,"%s %ld %s %d\n", "The merge cost is = ", mergecost, ", The list length is = ", x);
 	fprintf(fp, "%ld%s\n" , mergecost, "#Powersort");
-        
     }
-
     mergecost = 0;
     fclose(fp);
 #endif
