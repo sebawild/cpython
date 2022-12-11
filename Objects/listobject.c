@@ -28,12 +28,9 @@ class list "PyListObject *" "&PyList_Type"
 #include "clinic/listobject.c.h"
 
 
-<<<<<<< HEAD
-=======
 _Py_DECLARE_STR(list_err, "list index out of range");
 
 //for
->>>>>>> ee23951138060a0720d551440dc127c00c608b7d
 #ifdef PRINT_INFO
 int print_list_size_threshold = 0;
 long int mergecost = 0;
