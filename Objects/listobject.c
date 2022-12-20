@@ -1,5 +1,12 @@
 /* List object implementation */
 
+#define USE_TIMSORT //uses the timsort method for sorting 
+//#define USE_POWERSORT //uses the powersort method for sorting
+#define PRINT_INFO //this will be used to merge all info into a file that is printed out, this can be used with both timsort and powersort.
+//#define USE_DRAG
+
+
+
 #include "Python.h"
 #include "pycore_abstract.h"      // _PyIndex_Check()
 #include "pycore_interp.h"        // PyInterpreterState.list
@@ -18,6 +25,15 @@ class list "PyListObject *" "&PyList_Type"
 /*[clinic end generated code: output=da39a3ee5e6b4b0d input=f9b222678f9f71e0]*/
 
 #include "clinic/listobject.c.h"
+
+
+
+#ifdef USE_TIMSORT
+
+#ifdef PRINT_INFO
+int print_list_size_threshold = 0;
+long int mergecost = 0;
+#endif
 
 
 static struct _Py_list_state *
@@ -1884,6 +1900,11 @@ merge_at(MergeState *ms, Py_ssize_t i)
     assert(na > 0 && nb > 0);
     assert(ssa.keys + na == ssb.keys);
 
+    //wb mergecost
+    #ifdef PRINT_INFO
+    mergecost = mergecost + na + nb;
+    #endif
+
     /* Record the length of the combined runs; if i is the 3rd-last
      * run now, also slide over the last run (which isn't involved
      * in this merge).  The current run i+1 goes away in any case.
@@ -2172,6 +2193,27 @@ unsafe_tuple_compare(PyObject *v, PyObject *w, MergeState *ms)
         return PyObject_RichCompareBool(vt->ob_item[i], wt->ob_item[i], Py_LT);
 }
 
+//wb adding to the 
+#ifdef PRINT_INFO
+struct Py_sort_obj {
+    PyObject *list_obj;
+    int ref;
+
+};
+
+int compareMyType (const void * va, const void *vb)
+{
+    const struct Py_sort_obj * a = va;
+    const struct Py_sort_obj * b = vb;
+    if (PyObject_RichCompareBool(a->list_obj,b->list_obj,Py_LT) == 1) return -1;
+    //if (PyObject_RichCompareBool(a->list_obj,b->list_obj,Py_GT) == 1) return +1;
+    if (PyObject_RichCompareBool(a->list_obj,b->list_obj,Py_EQ) == 1) return a->ref -b->ref ;
+    return +1;
+}
+
+#endif
+
+
 /* An adaptive, stable, natural mergesort.  See listsort.txt.
  * Returns Py_None on success, NULL on error.  Even in case of error, the
  * list will be some permutation of its input state (nothing is lost or
@@ -2199,6 +2241,13 @@ static PyObject *
 list_sort_impl(PyListObject *self, PyObject *keyfunc, int reverse)
 /*[clinic end generated code: output=57b9f9c5e23fbe42 input=cb56cd179a713060]*/
 {
+    //wb open the array folder and set the list length
+    #ifdef PRINT_INFO
+    FILE *fp;
+    fp = fopen("arrays.txt", "a");
+    int wb_list_length = list_length(self);
+    #endif
+
     MergeState ms;
     Py_ssize_t nremaining;
     Py_ssize_t minrun;
@@ -2357,6 +2406,51 @@ list_sort_impl(PyListObject *self, PyObject *keyfunc, int reverse)
     }
     /* End of pre-sort check: ms is now set properly! */
 
+    #ifdef PRINT_INFO
+    {
+
+        //array of Py_sort_obj for storing in
+        struct Py_sort_obj * wb_rank_reduction_list = malloc(wb_list_length * sizeof (struct Py_sort_obj));
+
+        if (keyfunc == NULL){
+            for (int i = 0; i < wb_list_length; i++) {
+                wb_rank_reduction_list[i].list_obj = saved_ob_item[i];
+                wb_rank_reduction_list[i].ref = i;
+            }
+        } else {
+            for (int i = 0; i < wb_list_length; i++) {
+                wb_rank_reduction_list[i].list_obj =keys[i];
+                wb_rank_reduction_list[i].ref = i;
+            }
+        }
+
+
+        qsort(wb_rank_reduction_list, wb_list_length, sizeof (struct Py_sort_obj), compareMyType);
+
+        int *wb_rank_reduced_list = malloc(wb_list_length * sizeof(int));
+        int rank = 0;
+        for (int i = 0; i < wb_list_length; i++) {
+            wb_rank_reduced_list[wb_rank_reduction_list[i].ref] = rank;
+            if (i < wb_list_length - 1 &&
+                !PyObject_RichCompareBool(wb_rank_reduction_list[i].list_obj,
+                                          wb_rank_reduction_list[i + 1].list_obj,
+                                          Py_EQ))
+                rank++;
+        }
+
+	if(wb_list_length > 0){
+	fprintf(fp, "%d%s%d", wb_list_length,"#",wb_rank_reduced_list[0]);
+
+        for (int i = 1; i < wb_list_length; i++) {
+            fprintf(fp, "%s%d",",", wb_rank_reduced_list[i]);
+        }
+        fprintf(fp, "%s", "#");
+	}
+        free(wb_rank_reduction_list);
+        free(wb_rank_reduced_list);
+    }
+    #endif
+
     merge_init(&ms, saved_ob_size, keys != NULL);
 
     nremaining = saved_ob_size;
@@ -2452,6 +2546,19 @@ keyfunc_fail:
         PyMem_Free(final_ob_item);
     }
     Py_XINCREF(result);
+
+    //wb
+    #ifdef PRINT_INFO
+
+    if (wb_list_length > print_list_size_threshold )
+    {
+	fprintf(fp, "%ld%s\n" , mergecost, "#Timsort");
+    }
+    mergecost = 0;
+    fclose(fp);
+
+    #endif
+
     return result;
 }
 #undef IFLT
@@ -3414,3 +3521,4 @@ listiter_reduce_general(void *_it, int forward)
         return NULL;
     return Py_BuildValue("N(N)", _PyEval_GetBuiltinId(&PyId_iter), list);
 }
+#endif
