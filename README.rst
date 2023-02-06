@@ -1,5 +1,9 @@
 This is our local copy of CPython to play with.
+At the moment, you have to manually change the preprocessor flags
+in `Objects.listobject.c` to select the sorting algorithm and further
+instrumentation and recompile.
 
+TODO: Make this configurable via a command line flag in configure
 
 This is Python version 3.12.0 alpha 3
 =====================================
