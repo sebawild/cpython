@@ -315,6 +315,9 @@ fstring_find_expr_location(Token *parent, const char* expr_start, char *expr_str
                 start--;
             }
             *p_cols += (int)(expr_start - start);
+            if (*start == '\n') {
+                *p_cols -= 1;
+            }
         }
         /* adjust the start based on the number of newlines encountered
            before the f-string expression */
@@ -400,7 +403,7 @@ fstring_compile_expr(Parser *p, const char *expr_start, const char *expr_end,
                                      NULL, p->arena);
 
     p2->starting_lineno = t->lineno + lines;
-    p2->starting_col_offset = t->col_offset + cols;
+    p2->starting_col_offset = lines != 0 ? cols : t->col_offset + cols;
 
     expr = _PyPegen_run_parser(p2);
 
@@ -442,12 +445,23 @@ fstring_find_literal(Parser *p, const char **str, const char *end, int raw,
         if (!raw && ch == '\\' && s < end) {
             ch = *s++;
             if (ch == 'N') {
+                /* We need to look at and skip matching braces for "\N{name}"
+                   sequences because otherwise we'll think the opening '{'
+                   starts an expression, which is not the case with "\N".
+                   Keep looking for either a matched '{' '}' pair, or the end
+                   of the string. */
+
                 if (s < end && *s++ == '{') {
                     while (s < end && *s++ != '}') {
                     }
                     continue;
                 }
-                break;
+
+                /* This is an invalid "\N" sequence, since it's a "\N" not
+                   followed by a "{".  Just keep parsing this literal.  This
+                   error will be caught later by
+                   decode_unicode_with_escapes(). */
+                continue;
             }
             if (ch == '{' && warn_invalid_escape_sequence(p, ch, t) < 0) {
                 return -1;
@@ -491,7 +505,8 @@ done:
             *literal = PyUnicode_DecodeUTF8Stateful(literal_start,
                                                     s - literal_start,
                                                     NULL, NULL);
-        } else {
+        }
+        else {
             *literal = decode_unicode_with_escapes(p, literal_start,
                                                    s - literal_start, t);
         }
@@ -654,12 +669,12 @@ fstring_find_expr(Parser *p, const char **str, const char *end, int raw, int rec
                     *str += 1;
                     continue;
                 }
-                /* Don't get out of the loop for these, if they're single
-                   chars (not part of 2-char tokens). If by themselves, they
-                   don't end an expression (unlike say '!'). */
-                if (ch == '>' || ch == '<') {
-                    continue;
-                }
+            }
+            /* Don't get out of the loop for these, if they're single
+               chars (not part of 2-char tokens). If by themselves, they
+               don't end an expression (unlike say '!'). */
+            if (ch == '>' || ch == '<') {
+                continue;
             }
 
             /* Normal way out of this loop. */
@@ -686,10 +701,10 @@ fstring_find_expr(Parser *p, const char **str, const char *end, int raw, int rec
         }
     }
     expr_end = *str;
-    /* If we leave this loop in a string or with mismatched parens, we
-       don't care. We'll get a syntax error when compiling the
-       expression. But, we can produce a better error message, so
-       let's just do that.*/
+    /* If we leave the above loop in a string or with mismatched parens, we
+       don't really care. We'll get a syntax error when compiling the
+       expression. But, we can produce a better error message, so let's just
+       do that.*/
     if (quote_char) {
         RAISE_SYNTAX_ERROR("f-string: unterminated string");
         goto error;
@@ -728,7 +743,9 @@ fstring_find_expr(Parser *p, const char **str, const char *end, int raw, int rec
         while (Py_ISSPACE(**str)) {
             *str += 1;
         }
-
+        if (*str >= end) {
+            goto unexpected_end_of_string;
+        }
         /* Set *expr_text to the text of the expression. */
         *expr_text = PyUnicode_FromStringAndSize(expr_start, *str-expr_start);
         if (!*expr_text) {

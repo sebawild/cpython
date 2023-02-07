@@ -33,9 +33,6 @@ The recommended approach to invoking subprocesses is to use the :func:`run`
 function for all use cases it can handle. For more advanced use cases, the
 underlying :class:`Popen` interface can be used directly.
 
-The :func:`run` function was added in Python 3.5; if you need to retain
-compatibility with older versions, see the :ref:`call-function-trio` section.
-
 
 .. function:: run(args, *, stdin=None, input=None, stdout=None, stderr=None,\
                   capture_output=False, shell=False, cwd=None, timeout=None, \
@@ -83,8 +80,10 @@ compatibility with older versions, see the :ref:`call-function-trio` section.
 
    If *env* is not ``None``, it must be a mapping that defines the environment
    variables for the new process; these are used instead of the default
-   behavior of inheriting the current process' environment. It is passed directly
-   to :class:`Popen`.
+   behavior of inheriting the current process' environment. It is passed
+   directly to :class:`Popen`. This mapping can be str to str on any platform
+   or bytes to bytes on POSIX platforms much like :data:`os.environ` or
+   :data:`os.environb`.
 
    Examples::
 
@@ -195,7 +194,10 @@ compatibility with older versions, see the :ref:`call-function-trio` section.
     .. attribute:: output
 
         Output of the child process if it was captured by :func:`run` or
-        :func:`check_output`.  Otherwise, ``None``.
+        :func:`check_output`.  Otherwise, ``None``.  This is always
+        :class:`bytes` when any output was captured regardless of the
+        ``text=True`` setting.  It may remain ``None`` instead of ``b''``
+        when no output was observed.
 
     .. attribute:: stdout
 
@@ -204,7 +206,9 @@ compatibility with older versions, see the :ref:`call-function-trio` section.
     .. attribute:: stderr
 
         Stderr output of the child process if it was captured by :func:`run`.
-        Otherwise, ``None``.
+        Otherwise, ``None``.  This is always :class:`bytes` when stderr output
+        was captured regardless of the ``text=True`` setting.  It may remain
+        ``None`` instead of ``b''`` when no stderr output was observed.
 
     .. versionadded:: 3.3
 
@@ -214,7 +218,9 @@ compatibility with older versions, see the :ref:`call-function-trio` section.
 .. exception:: CalledProcessError
 
     Subclass of :exc:`SubprocessError`, raised when a process run by
-    :func:`check_call` or :func:`check_output` returns a non-zero exit status.
+    :func:`check_call`, :func:`check_output`, or :func:`run` (with ``check=True``)
+    returns a non-zero exit status.
+
 
     .. attribute:: returncode
 
@@ -264,13 +270,14 @@ default values. The arguments that are most commonly needed are:
    *stdin*, *stdout* and *stderr* specify the executed program's standard input,
    standard output and standard error file handles, respectively.  Valid values
    are :data:`PIPE`, :data:`DEVNULL`, an existing file descriptor (a positive
-   integer), an existing file object, and ``None``.  :data:`PIPE` indicates
-   that a new pipe to the child should be created.  :data:`DEVNULL` indicates
-   that the special file :data:`os.devnull` will be used.  With the default
-   settings of ``None``, no redirection will occur; the child's file handles
-   will be inherited from the parent.  Additionally, *stderr* can be
-   :data:`STDOUT`, which indicates that the stderr data from the child
-   process should be captured into the same file handle as for *stdout*.
+   integer), an existing file object with a valid file descriptor, and ``None``.
+   :data:`PIPE` indicates that a new pipe to the child should be created.
+   :data:`DEVNULL` indicates that the special file :data:`os.devnull` will
+   be used.  With the default settings of ``None``, no redirection will occur;
+   the child's file handles will be inherited from the parent.
+   Additionally, *stderr* can be :data:`STDOUT`, which indicates that the
+   stderr data from the child process should be captured into the same file
+   handle as for *stdout*.
 
    .. index::
       single: universal newlines; subprocess module
@@ -358,7 +365,7 @@ functions.
 
    .. warning::
 
-      For maximum reliability, use a fully-qualified path for the executable.
+      For maximum reliability, use a fully qualified path for the executable.
       To search for an unqualified name on :envvar:`PATH`, use
       :meth:`shutil.which`. On all platforms, passing :data:`sys.executable`
       is the recommended way to launch the current Python interpreter again,
@@ -482,13 +489,14 @@ functions.
    *stdin*, *stdout* and *stderr* specify the executed program's standard input,
    standard output and standard error file handles, respectively.  Valid values
    are :data:`PIPE`, :data:`DEVNULL`, an existing file descriptor (a positive
-   integer), an existing :term:`file object`, and ``None``.  :data:`PIPE`
-   indicates that a new pipe to the child should be created.  :data:`DEVNULL`
-   indicates that the special file :data:`os.devnull` will be used. With the
-   default settings of ``None``, no redirection will occur; the child's file
-   handles will be inherited from the parent.  Additionally, *stderr* can be
-   :data:`STDOUT`, which indicates that the stderr data from the applications
-   should be captured into the same file handle as for stdout.
+   integer), an existing :term:`file object` with a valid file descriptor,
+   and ``None``.  :data:`PIPE` indicates that a new pipe to the child should
+   be created.  :data:`DEVNULL` indicates that the special file
+   :data:`os.devnull` will be used. With the default settings of ``None``,
+   no redirection will occur; the child's file handles will be inherited from
+   the parent.  Additionally, *stderr* can be :data:`STDOUT`, which indicates
+   that the stderr data from the applications should be captured into the same
+   file handle as for stdout.
 
    If *preexec_fn* is set to a callable object, this object will be called in the
    child process just before the child is executed.
@@ -605,7 +613,9 @@ functions.
 
    If *env* is not ``None``, it must be a mapping that defines the environment
    variables for the new process; these are used instead of the default
-   behavior of inheriting the current process' environment.
+   behavior of inheriting the current process' environment. This mapping can be
+   str to str on any platform or bytes to bytes on POSIX platforms much like
+   :data:`os.environ` or :data:`os.environb`.
 
    .. note::
 

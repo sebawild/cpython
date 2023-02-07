@@ -5377,6 +5377,8 @@ prtrace(PyThreadState *tstate, PyObject *v, const char *str)
     }
     printf("\n");
     PyErr_Restore(type, value, traceback);
+    // gh-91924: PyObject_Print() can indirectly set lltrace to 0
+    lltrace = 1;
     return 1;
 }
 #endif
@@ -5510,7 +5512,7 @@ maybe_call_line_trace(Py_tracefunc func, PyObject *obj,
         }
     }
     /* Always emit an opcode event if we're tracing all opcodes. */
-    if (frame->f_trace_opcodes) {
+    if (frame->f_trace_opcodes && result == 0) {
         result = call_trace(func, obj, tstate, frame, trace_info, PyTrace_OPCODE, Py_None);
     }
     return result;
@@ -5523,10 +5525,20 @@ _PyEval_SetProfile(PyThreadState *tstate, Py_tracefunc func, PyObject *arg)
     /* The caller must hold the GIL */
     assert(PyGILState_Check());
 
+    static int reentrant = 0;
+    if (reentrant) {
+        _PyErr_SetString(tstate, PyExc_RuntimeError, "Cannot install a profile function "
+                         "while another profile function is being installed");
+        reentrant = 0;
+        return -1;
+    }
+    reentrant = 1;
+
     /* Call _PySys_Audit() in the context of the current thread state,
        even if tstate is not the current thread state. */
     PyThreadState *current_tstate = _PyThreadState_GET();
     if (_PySys_Audit(current_tstate, "sys.setprofile", NULL) < 0) {
+        reentrant = 0;
         return -1;
     }
 
@@ -5544,6 +5556,7 @@ _PyEval_SetProfile(PyThreadState *tstate, Py_tracefunc func, PyObject *arg)
 
     /* Flag that tracing or profiling is turned on */
     tstate->cframe->use_tracing = (func != NULL) || (tstate->c_tracefunc != NULL);
+    reentrant = 0;
     return 0;
 }
 
@@ -5564,10 +5577,21 @@ _PyEval_SetTrace(PyThreadState *tstate, Py_tracefunc func, PyObject *arg)
     /* The caller must hold the GIL */
     assert(PyGILState_Check());
 
+    static int reentrant = 0;
+
+    if (reentrant) {
+        _PyErr_SetString(tstate, PyExc_RuntimeError, "Cannot install a trace function "
+                         "while another trace function is being installed");
+        reentrant = 0;
+        return -1;
+    }
+    reentrant = 1;
+
     /* Call _PySys_Audit() in the context of the current thread state,
        even if tstate is not the current thread state. */
     PyThreadState *current_tstate = _PyThreadState_GET();
     if (_PySys_Audit(current_tstate, "sys.settrace", NULL) < 0) {
+        reentrant = 0;
         return -1;
     }
 
@@ -5577,9 +5601,8 @@ _PyEval_SetTrace(PyThreadState *tstate, Py_tracefunc func, PyObject *arg)
     tstate->c_traceobj = NULL;
     /* Must make sure that profiling is not ignored if 'traceobj' is freed */
     tstate->cframe->use_tracing = (tstate->c_profilefunc != NULL);
-    Py_XDECREF(traceobj);
-
     Py_XINCREF(arg);
+    Py_XDECREF(traceobj);
     tstate->c_traceobj = arg;
     tstate->c_tracefunc = func;
 
@@ -5587,6 +5610,7 @@ _PyEval_SetTrace(PyThreadState *tstate, Py_tracefunc func, PyObject *arg)
     tstate->cframe->use_tracing = ((func != NULL)
                            || (tstate->c_profilefunc != NULL));
 
+    reentrant = 0;
     return 0;
 }
 
@@ -6261,9 +6285,12 @@ format_exc_check_arg(PyThreadState *tstate, PyObject *exc,
         PyErr_Fetch(&type, &value, &traceback);
         PyErr_NormalizeException(&type, &value, &traceback);
         if (PyErr_GivenExceptionMatches(value, PyExc_NameError)) {
-            // We do not care if this fails because we are going to restore the
-            // NameError anyway.
-            (void)_PyObject_SetAttrId(value, &PyId_name, obj);
+            PyNameErrorObject* exc = (PyNameErrorObject*) value;
+            if (exc->name == NULL) {
+                // We do not care if this fails because we are going to restore the
+                // NameError anyway.
+                (void)_PyObject_SetAttrId(value, &PyId_name, obj);
+            }
         }
         PyErr_Restore(type, value, traceback);
     }

@@ -17,7 +17,7 @@ import collections
 from . import _adapters, _meta
 from ._meta import PackageMetadata
 from ._collections import FreezableDefaultDict, Pair
-from ._functools import method_cache
+from ._functools import method_cache, pass_none
 from ._itertools import unique_everseen
 from ._meta import PackageMetadata, SimplePath
 
@@ -128,12 +128,21 @@ class EntryPoint(
     See `the packaging docs on entry points
     <https://packaging.python.org/specifications/entry-points/>`_
     for more information.
+
+    >>> ep = EntryPoint(
+    ...     name=None, group=None, value='package.module:attr [extra1, extra2]')
+    >>> ep.module
+    'package.module'
+    >>> ep.attr
+    'attr'
+    >>> ep.extras
+    ['extra1', 'extra2']
     """
 
     pattern = re.compile(
         r'(?P<module>[\w.]+)\s*'
-        r'(:\s*(?P<attr>[\w.]+))?\s*'
-        r'(?P<extras>\[.*\])?\s*$'
+        r'(:\s*(?P<attr>[\w.]+)\s*)?'
+        r'((?P<extras>\[.*\])\s*)?$'
     )
     """
     A regular expression describing the syntax for an entry point,
@@ -176,7 +185,7 @@ class EntryPoint(
     @property
     def extras(self):
         match = self.pattern.match(self.value)
-        return list(re.finditer(r'\w+', match.group('extras') or ''))
+        return re.findall(r'\w+', match.group('extras') or '')
 
     def _for(self, dist):
         self.dist = dist
@@ -200,6 +209,25 @@ class EntryPoint(
         )
 
     def matches(self, **params):
+        """
+        EntryPoint matches the given parameters.
+
+        >>> ep = EntryPoint(group='foo', name='bar', value='bing:bong [extra1, extra2]')
+        >>> ep.matches(group='foo')
+        True
+        >>> ep.matches(name='bar', value='bing:bong [extra1, extra2]')
+        True
+        >>> ep.matches(group='foo', name='other')
+        False
+        >>> ep.matches()
+        True
+        >>> ep.matches(extras=['extra1', 'extra2'])
+        True
+        >>> ep.matches(module='bing')
+        True
+        >>> ep.matches(attr='bong')
+        True
+        """
         attrs = (getattr(self, param) for param in params)
         return all(map(operator.eq, params.values(), attrs))
 
@@ -235,6 +263,8 @@ class DeprecatedList(list):
     >>> len(recwarn)
     1
     """
+
+    __slots__ = ()
 
     _warn = functools.partial(
         warnings.warn,
@@ -648,7 +678,7 @@ class Distribution:
 
     def _read_egg_info_reqs(self):
         source = self.read_text('requires.txt')
-        return source and self._deps_from_requires_text(source)
+        return None if source is None else self._deps_from_requires_text(source)
 
     @classmethod
     def _deps_from_requires_text(cls, source):
@@ -750,7 +780,6 @@ class FastPath:
 
     def __init__(self, root):
         self.root = root
-        self.base = os.path.basename(self.root).lower()
 
     def joinpath(self, child):
         return pathlib.Path(self.root, child)
@@ -909,13 +938,25 @@ class PathDistribution(Distribution):
         normalized name from the file system path.
         """
         stem = os.path.basename(str(self._path))
-        return self._name_from_stem(stem) or super()._normalized_name
+        return (
+            pass_none(Prepared.normalize)(self._name_from_stem(stem))
+            or super()._normalized_name
+        )
 
-    def _name_from_stem(self, stem):
-        name, ext = os.path.splitext(stem)
+    @staticmethod
+    def _name_from_stem(stem):
+        """
+        >>> PathDistribution._name_from_stem('foo-3.0.egg-info')
+        'foo'
+        >>> PathDistribution._name_from_stem('CherryPy-3.0.dist-info')
+        'CherryPy'
+        >>> PathDistribution._name_from_stem('face.egg-info')
+        'face'
+        """
+        filename, ext = os.path.splitext(stem)
         if ext not in ('.dist-info', '.egg-info'):
             return
-        name, sep, rest = stem.partition('-')
+        name, sep, rest = filename.partition('-')
         return name
 
 

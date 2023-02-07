@@ -19,6 +19,13 @@ on:
     - 3.8
     - 3.7
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   check_source:
     name: 'Check for source changes'
@@ -27,13 +34,13 @@ jobs:
       run_tests: ${{ steps.check.outputs.run_tests }}
       run_ssl_tests: ${{ steps.check.outputs.run_ssl_tests }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Check for source changes
         id: check
         run: |
           if [ -z "$GITHUB_BASE_REF" ]; then
-            echo '::set-output name=run_tests::true'
-            echo '::set-output name=run_ssl_tests::true'
+            echo "run_tests=true" >> $GITHUB_OUTPUT
+            echo "run_ssl_tests=true" >> $GITHUB_OUTPUT
           else
             git fetch origin $GITHUB_BASE_REF --depth=1
             # git diff "origin/$GITHUB_BASE_REF..." (3 dots) may be more
@@ -49,8 +56,8 @@ jobs:
             # into the PR branch anyway.
             #
             # https://github.com/python/core-workflow/issues/373
-            git diff --name-only origin/$GITHUB_BASE_REF.. | grep -qvE '(\.rst$|^Doc|^Misc)' && echo '::set-output name=run_tests::true' || true
-            git diff --name-only origin/$GITHUB_BASE_REF.. | grep -qE '(ssl|hashlib|hmac|^.github)' && echo '::set-output name=run_ssl_tests::true' || true
+            git diff --name-only origin/$GITHUB_BASE_REF.. | grep -qvE '(\.rst$|^Doc|^Misc)' && echo "run_tests=true" >> $GITHUB_OUTPUT || true
+            git diff --name-only origin/$GITHUB_BASE_REF.. | grep -qE '(ssl|hashlib|hmac|^.github)' && echo "run_ssl_tests=true" >> $GITHUB_OUTPUT || true
           fi
 
   check_abi:
@@ -73,7 +80,15 @@ jobs:
           ./configure --enable-shared
           make -j4
       - name: Check for changes in the ABI
-        run: make check-abidump
+        run: |
+          if ! make check-abidump; then
+            echo "Generated ABI file is not up to date."
+            echo "Please, add the release manager of this branch as a reviewer of this PR."
+            echo ""
+            echo "To learn more about this check, please visit: https://devguide.python.org/setup/?highlight=abi#regenerate-the-abi-dump"
+            echo ""
+            exit 1
+          fi
 
   check_generated_files:
     name: 'Check if generated files are up to date'
@@ -81,8 +96,8 @@ jobs:
     needs: check_source
     if: needs.check_source.outputs.run_tests == 'true'
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v3
       - name: Install Dependencies
         run: sudo ./.github/workflows/posix-deps-apt.sh
       - name: Add ccache to PATH
@@ -127,7 +142,7 @@ jobs:
     env:
        IncludeUwp: 'true'
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Build CPython
       run: .\PCbuild\build.bat -e -p Win32
     - name: Display build info
@@ -143,7 +158,7 @@ jobs:
     env:
        IncludeUwp: 'true'
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Register MSVC problem matcher
       run: echo "::add-matcher::.github/problem-matchers/msvc.json"
     - name: Build CPython
@@ -161,7 +176,7 @@ jobs:
     env:
       PYTHONSTRICTEXTENSIONBUILD: 1
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Prepare homebrew environment variables
       run: |
         echo "LDFLAGS=-L$(brew --prefix tcl-tk)/lib" >> $GITHUB_ENV
@@ -181,10 +196,10 @@ jobs:
     needs: check_source
     if: needs.check_source.outputs.run_tests == 'true'
     env:
-      OPENSSL_VER: 1.1.1m
+      OPENSSL_VER: 1.1.1q
       PYTHONSTRICTEXTENSIONBUILD: 1
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Register gcc problem matcher
       run: echo "::add-matcher::.github/problem-matchers/gcc.json"
     - name: Install Dependencies
@@ -196,7 +211,7 @@ jobs:
         echo "LD_LIBRARY_PATH=${GITHUB_WORKSPACE}/multissl/openssl/${OPENSSL_VER}/lib" >> $GITHUB_ENV
     - name: 'Restore OpenSSL build'
       id: cache-openssl
-      uses: actions/cache@v2.1.4
+      uses: actions/cache@v3.0.2
       with:
         path: ./multissl/openssl/${{ env.OPENSSL_VER }}
         key: ${{ runner.os }}-multissl-openssl-${{ env.OPENSSL_VER }}
@@ -225,14 +240,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        openssl_ver: [1.1.1m, 3.0.1]
+        openssl_ver: [1.1.1q, 3.0.5]
     env:
       OPENSSL_VER: ${{ matrix.openssl_ver }}
       MULTISSL_DIR: ${{ github.workspace }}/multissl
       OPENSSL_DIR: ${{ github.workspace }}/multissl/openssl/${{ matrix.openssl_ver }}
       LD_LIBRARY_PATH: ${{ github.workspace }}/multissl/openssl/${{ matrix.openssl_ver }}/lib
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Register gcc problem matcher
       run: echo "::add-matcher::.github/problem-matchers/gcc.json"
     - name: Install Dependencies
@@ -244,7 +259,7 @@ jobs:
         echo "LD_LIBRARY_PATH=${GITHUB_WORKSPACE}/multissl/openssl/${OPENSSL_VER}/lib" >> $GITHUB_ENV
     - name: 'Restore OpenSSL build'
       id: cache-openssl
-      uses: actions/cache@v2.1.4
+      uses: actions/cache@v3.0.2
       with:
         path: ./multissl/openssl/${{ env.OPENSSL_VER }}
         key: ${{ runner.os }}-multissl-openssl-${{ env.OPENSSL_VER }}
