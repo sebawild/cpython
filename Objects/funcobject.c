@@ -12,11 +12,20 @@ static void
 notify_func_watchers(PyInterpreterState *interp, PyFunction_WatchEvent event,
                      PyFunctionObject *func, PyObject *new_value)
 {
-    for (int i = 0; i < FUNC_MAX_WATCHERS; i++) {
-        PyFunction_WatchCallback cb = interp->func_watchers[i];
-        if ((cb != NULL) && (cb(event, func, new_value) < 0)) {
-            PyErr_WriteUnraisable((PyObject *) func);
+    uint8_t bits = interp->active_func_watchers;
+    int i = 0;
+    while (bits) {
+        assert(i < FUNC_MAX_WATCHERS);
+        if (bits & 1) {
+            PyFunction_WatchCallback cb = interp->func_watchers[i];
+            // callback must be non-null if the watcher bit is set
+            assert(cb != NULL);
+            if (cb(event, func, new_value) < 0) {
+                PyErr_WriteUnraisable((PyObject *) func);
+            }
         }
+        i++;
+        bits >>= 1;
     }
 }
 
@@ -25,6 +34,7 @@ handle_func_event(PyFunction_WatchEvent event, PyFunctionObject *func,
                   PyObject *new_value)
 {
     PyInterpreterState *interp = _PyInterpreterState_GET();
+    assert(interp->_initialized);
     if (interp->active_func_watchers) {
         notify_func_watchers(interp, event, func, new_value);
     }
@@ -83,7 +93,10 @@ _PyFunction_FromConstructor(PyFrameConstructor *constr)
     op->func_doc = Py_NewRef(Py_None);
     op->func_dict = NULL;
     op->func_weakreflist = NULL;
-    op->func_module = NULL;
+    op->func_module = Py_XNewRef(PyDict_GetItem(op->func_globals, &_Py_ID(__name__)));
+    if (!op->func_module) {
+        PyErr_Clear();
+    }
     op->func_annotations = NULL;
     op->vectorcall = _PyFunction_Vectorcall;
     op->func_version = 0;

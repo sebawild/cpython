@@ -1,3 +1,18 @@
+My clone
+========
+
+This is a clone of the official CPython with the following new branches.
+These all add instrumentation to the builtin list.sort/sorted functions to
+log how much sorting is done; they also add options to switch back to the old 
+Timsort merge policy (as used up to 3.10) or the new Powersort (used from 
+3.11 onwards):
+
+* `main-instrumented`: The main branch with instrumentation added
+* `3.10-instrumented`: CPython 3.10 branch with instrumentation added
+
+main-instrumented
+-----------------
+
 This is our local copy of CPython to play with.
 At the moment, you have to manually change the preprocessor flags
 in `Objects.listobject.c` to select the sorting algorithm and further
@@ -5,7 +20,9 @@ instrumentation and recompile.
 
 TODO: Make this configurable via a command line flag in configure
 
-This is Python version 3.12.0 alpha 3
+
+
+This is Python version 3.12.0 alpha 4
 =====================================
 
 .. image:: https://github.com/python/cpython/workflows/Tests/badge.svg
@@ -21,7 +38,7 @@ This is Python version 3.12.0 alpha 3
    :target: https://discuss.python.org/
 
 
-Copyright © 2001-2022 Python Software Foundation.  All rights reserved.
+Copyright © 2001-2023 Python Software Foundation.  All rights reserved.
 
 See the end of this file for further copyright and license information.
 
@@ -252,7 +269,7 @@ Copyright and License Information
 ---------------------------------
 
 
-Copyright © 2001-2022 Python Software Foundation.  All rights reserved.
+Copyright © 2001-2023 Python Software Foundation.  All rights reserved.
 
 Copyright © 2000 BeOpen.com.  All rights reserved.
 
