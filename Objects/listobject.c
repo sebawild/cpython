@@ -1,6 +1,5 @@
 /* List object implementation */
 
-
 // WB
 /*
  * Preprocessor macros for our instrumentation:
@@ -9,7 +8,7 @@
  *  - PRINT_INFO: Write debug info about ALL sorted lists to arrays.txt
  *  - USE_DRAG: Slow down sorting artificially to generate easily measurable impact of sorting
  */
-// If neither USE_TIMSORT nor USE_POWERSORT is defined, default to Powersort
+
 #define USE_POWERSORT
 //#define USE_TIMSORT
 #define PRINT_INFO //this will be used to merge all info into a file that is printed out, this can be used with both timsort and powersort.
@@ -25,15 +24,11 @@
 #include "pycore_object.h"        // _PyObject_GC_TRACK()
 #include "pycore_tuple.h"         // _PyTuple_FromArray()
 #include <stddef.h>
-
 // WB
 #include <time.h>                 // For used of sleep in drag 
 #include <stdio.h> // for debug
 #include <stdlib.h> 
 #include <unistd.h>
-
-
-
 
 /*[clinic input]
 class list "PyListObject *" "&PyList_Type"
@@ -43,8 +38,6 @@ class list "PyListObject *" "&PyList_Type"
 #include "clinic/listobject.c.h"
 
 _Py_DECLARE_STR(list_err, "list index out of range");
-
-
 // WB
 #ifdef PRINT_INFO
 int print_list_size_threshold = 0;
@@ -66,9 +59,6 @@ static void debug_print_pyobject(PyObject *obj) {
 #endif
 
 //#ifdef USE_TIMSORT  // REPLACED THIS WITH MORE LOCAL IF THEN
-
-
-
 
 #if PyList_MAXFREELIST > 0
 static struct _Py_list_state *
@@ -1981,7 +1971,6 @@ merge_at(MergeState *ms, Py_ssize_t i)
     #ifdef PRINT_INFO
     mergecost = mergecost + na + nb;
     #endif
-
     /* Record the length of the combined runs; if i is the 3rd-last
      * run now, also slide over the last run (which isn't involved
      * in this merge).  The current run i+1 goes away in any case.
@@ -2018,10 +2007,8 @@ merge_at(MergeState *ms, Py_ssize_t i)
         return merge_hi(ms, ssa, na, ssb, nb);
 }
 
-
 // WB
 #ifdef USE_POWERSORT
-
 /* Two adjacent runs begin at index s1. The first run has length n1, and
  * the second run (starting at index s1+n1) has length n2. The list has total
  * length n.
@@ -2131,8 +2118,6 @@ merge_collapse(MergeState *ms)
 
 
 #endif
-
-
 
 /* Regardless of invariants, merge all runs on the stack until only one
  * remains.  This is used at the end of the mergesort.
@@ -2369,9 +2354,6 @@ int compareMyType (const void * va, const void *vb)
 }
 #endif
 
-
-
-
 /* An adaptive, stable, natural mergesort.  See listsort.txt.
  * Returns Py_None on success, NULL on error.  Even in case of error, the
  * list will be some permutation of its input state (nothing is lost or
@@ -2412,7 +2394,6 @@ list_sort_impl(PyListObject *self, PyObject *keyfunc, int reverse)
     sleep(n/100000);
 }
 #endif
-
     MergeState ms;
     Py_ssize_t nremaining;
     Py_ssize_t minrun;
