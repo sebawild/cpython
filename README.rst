@@ -1,3 +1,17 @@
+# My clone
+
+This is a clone of the official CPython with the following new branches.
+These all add instrumentation to the builtin list.sort/sorted functions to
+log how much sorting is done; they also add options to switch back to the old 
+Timsort merge policy (as used up to 3.10) or the new Powersort (used from 
+3.11 onwards):
+
+* `main-instrumented`: The main branch with instrumentation added
+* `3.10-instrumented`: CPython 3.10 branch with instrumentation added
+
+
+
+
 This is Python version 3.12.0 alpha 4
 =====================================
 
